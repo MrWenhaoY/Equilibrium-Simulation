@@ -1,4 +1,6 @@
+from matplotlib.pyplot import fill
 import numpy as np
+from scipy.linalg import eig
 
 class Player:
     def __init__(self, num_actions: int):
@@ -75,11 +77,47 @@ class NoRegretPlayer(Player):
         return regret / self.iterations
 
     def update(self, action, payoffs):
-        self.weights[action] *= (1 + self.learning_rate * payoffs[action])
+        self.weights *= (1 + self.learning_rate * payoffs)
 
         self.strategy = self.weights / self.weights.sum()
 
         # update fixed payoffs
         self.fixed_payoffs += payoffs
-        self.total_payff += payoffs[action]
+        self.total_payoff += payoffs[action]
+
+        self.iterations += 1
+
+class NoSwapPlayer(Player):
+    def __init__(self, n_actions, learning_rate):
+        self.n_actions = n_actions
+        
+        self.strategy =  np.full(shape=n_actions, fill_value=1/n_actions)
+
+        self.algs = np.full(shape=n_actions, fill_value=None)
+
+        for i in range(n_actions):
+            self.algs[i] = NoRegretPlayer(n_actions, learning_rate)
+    
+    def chooseAction(self):
+        return self.strategy
+
+    def update(self, action, payoffs):
+        recs = np.zeros(shape=(self.n_actions, self.n_actions))
+
+        for i in range(self.n_actions):
+            p = self.strategy[i] * payoffs
+            self.algs[i].update(action, p)
+
+            recs[i] = self.algs[i].strategy
+
+        print(recs)
+
+        # w, vl = eig(recs, left=True, right=False)
+        w, vl = eig(recs.T)
+        idx = np.argmin(np.abs(w-1))
+        pi = vl[:,idx].real
+        pi = pi / pi.sum()
+
+        self.strategy = pi
+
 

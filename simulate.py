@@ -29,3 +29,22 @@ def simulate(player1: Player, player2: Player, payoffs1: np.ndarray, payoffs2: n
         actions.append((choice1, choice2))
     return p1_totalPayoff, p2_totalPayoff, actions
 
+
+def run_once(p1, p2, payoffs1, payoffs2):
+    p1_num_actions, p2_num_actions = payoffs1.shape
+    assert payoffs2.shape == (p2_num_actions, p1_num_actions)
+
+    # get strategies from each player
+    s1 = p1.chooseAction()
+    s2 = p2.chooseAction()
+
+    # make action choices
+    a1 = np.random.choice(p1_num_actions, p=s1)
+    a2 = np.random.choice(p2_num_actions, p=s2)
+
+    # update player strategies
+    p1.update(a1, payoffs1 @ s2)
+    p2.update(a2, payoffs2 @ s1)
+    # p1.update(a1, payoffs1[:,a2])
+    # p2.update(a2, payoffs2[:, a1])
+
