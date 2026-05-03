@@ -77,10 +77,10 @@ class NoRegretPlayer(Player):
         return regret / self.iterations
 
     def update(self, action, payoffs):
-        self.weights *= (1 + self.learning_rate * payoffs)
+        self.weights *= (1  - self.learning_rate) ** (-1 * payoffs)
 
         self.strategy = self.weights / self.weights.sum()
-
+ 
         # update fixed payoffs
         self.fixed_payoffs += payoffs
         self.total_payoff += payoffs[action]
@@ -90,14 +90,15 @@ class NoRegretPlayer(Player):
 class NoSwapPlayer(Player):
     def __init__(self, n_actions, learning_rate):
         self.n_actions = n_actions
-        
+
         self.strategy =  np.full(shape=n_actions, fill_value=1/n_actions)
 
         self.algs = np.full(shape=n_actions, fill_value=None)
 
         for i in range(n_actions):
             self.algs[i] = NoRegretPlayer(n_actions, learning_rate)
-    
+
+
     def chooseAction(self):
         return self.strategy
 
@@ -110,8 +111,6 @@ class NoSwapPlayer(Player):
 
             recs[i] = self.algs[i].strategy
 
-        print(recs)
-
         # w, vl = eig(recs, left=True, right=False)
         w, vl = eig(recs.T)
         idx = np.argmin(np.abs(w-1))
@@ -119,5 +118,6 @@ class NoSwapPlayer(Player):
         pi = pi / pi.sum()
 
         self.strategy = pi
+
 
 
