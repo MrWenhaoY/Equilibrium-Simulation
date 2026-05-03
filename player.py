@@ -31,8 +31,10 @@ class BestResponsePlayer(Player):
             self.next_action += 1 / num_actions
         else:
             self.next_action[0] = 1
+
     def chooseAction(self) -> np.ndarray:
         return self.next_action
+
     def update(self, action: int, payoffs: np.ndarray):
         super().update(action, payoffs)
         max_value = np.max(payoffs)
@@ -44,3 +46,40 @@ class BestResponsePlayer(Player):
             self.next_action /= np.sum(self.next_action)
         else:
             self.next_action[np.argmax(payoffs)] = 1 # This should be the first index of the maximum
+
+class NoRegretPlayer(Player):
+    def __init__(self, n_actions, learning_rate):
+        self.n_actions = n_actions
+
+        self.total_payoff = 0 
+        self.iterations = 0
+        
+        # array of weights and resulting strategy
+        self.weights = np.ones(n_actions)
+        self.strategy = self.weights / n_actions
+        
+        # controls exploration vs exploitation
+        self.learning_rate = learning_rate
+
+        # array to keep track of fixed action payoffs
+        self.fixed_payoffs = np.zeros(n_actions)
+
+        # track total_payoff
+        self.total_payoff = 0
+    
+    def chooseAction(self):
+        return self.strategy
+
+    def get_regret(self):
+        regret = self.fixed_payoffs.max() - self.total_payoff
+        return regret / self.iterations
+
+    def update(self, action, payoffs):
+        self.weights[action] *= (1 + self.learning_rate * payoffs[action])
+
+        self.strategy = self.weights / self.weights.sum()
+
+        # update fixed payoffs
+        self.fixed_payoffs += payoffs
+        self.total_payff += payoffs[action]
+

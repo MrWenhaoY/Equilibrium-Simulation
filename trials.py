@@ -1,5 +1,5 @@
 from simulate import makeRandomPayoffMatrix, simulate
-from player import BestResponsePlayer
+from player import BestResponsePlayer, NoRegretPlayer
 
 
 # Run tests/experiments here
@@ -10,8 +10,12 @@ from player import BestResponsePlayer
 A = makeRandomPayoffMatrix(3)
 B = makeRandomPayoffMatrix(3)
 
-player1 = BestResponsePlayer(3, False)
-player2 = BestResponsePlayer(3, False)
+# player1 = BestResponsePlayer(3, False)
+# player2 = BestResponsePlayer(3, False)
+
+player1 = NoRegretPlayer(3, 0.1)
+player2 = NoRegretPlayer(3, 0.1)
+
 p1_totalPayoff, p2_totalPayoff, actions = simulate(player1, player2, A, B, 10)
 print("Player 1 total payoff:", p1_totalPayoff)
 print("Player 2 total payoff:", p2_totalPayoff)
