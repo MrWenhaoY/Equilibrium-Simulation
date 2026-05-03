@@ -44,3 +44,24 @@ class BestResponsePlayer(Player):
             self.next_action /= np.sum(self.next_action)
         else:
             self.next_action[np.argmax(payoffs)] = 1 # This should be the first index of the maximum
+
+# For this class, we define the cost to be (1-payoff), where payoff is the payoff normalized between 0 and 1
+class MultiplicativeWeightsPlayer(Player):
+    # minVal, maxVal are the maximum values that payoffs can take
+    def __init__(self, num_actions: int, epsilon: float, minVal=0, maxVal=1):
+        super().__init__(num_actions)
+        assert (0 < epsilon <= 0.5), "epsilon must be within (0, 0.5]"
+        assert (minVal <= maxVal), "minVal cannot be greater than maxVal"
+        self.epsilon = epsilon
+        self.weights = np.ones(num_actions) / num_actions # Normalized weights
+        self.minVal = minVal
+        self.maxVal = maxVal
+    def chooseAction(self) -> np.ndarray:
+        return self.weights
+    def update(self, action: int, payoffs: np.ndarray):
+        super().update(action, payoffs)
+        costs = 1 - (payoffs - self.minVal) / (self.maxVal - self.minVal)
+        self.weights *= np.pow((1 - self.epsilon), costs)
+        
+        # Normalize weights
+        self.weights /= np.sum(self.weights)
