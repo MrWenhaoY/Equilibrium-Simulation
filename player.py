@@ -1,4 +1,6 @@
+from matplotlib.pyplot import fill
 import numpy as np
+from scipy.linalg import eig
 
 class Player:
     def __init__(self, num_actions: int):
@@ -31,8 +33,10 @@ class BestResponsePlayer(Player):
             self.next_action += 1 / num_actions
         else:
             self.next_action[0] = 1
+
     def chooseAction(self) -> np.ndarray:
         return self.next_action
+
     def update(self, action: int, payoffs: np.ndarray):
         super().update(action, payoffs)
         max_value = np.max(payoffs)
@@ -45,6 +49,74 @@ class BestResponsePlayer(Player):
         else:
             self.next_action[np.argmax(payoffs)] = 1 # This should be the first index of the maximum
 
+class NoRegretPlayer(Player):
+    def __init__(self, n_actions, learning_rate):
+        self.n_actions = n_actions
+
+        self.total_payoff = 0 
+        self.iterations = 0
+        
+        # array of weights and resulting strategy
+        self.weights = np.ones(n_actions)
+        self.strategy = self.weights / n_actions
+        
+        # controls exploration vs exploitation
+        self.learning_rate = learning_rate
+
+        # array to keep track of fixed action payoffs
+        self.fixed_payoffs = np.zeros(n_actions)
+
+        # track total_payoff
+        self.total_payoff = 0
+    
+    def chooseAction(self):
+        return self.strategy
+
+    def get_regret(self):
+        regret = self.fixed_payoffs.max() - self.total_payoff
+        return regret / self.iterations
+
+    def update(self, action, payoffs):
+        self.weights *= (1  - self.learning_rate) ** (-1 * payoffs)
+
+        self.strategy = self.weights / self.weights.sum()
+ 
+        # update fixed payoffs
+        self.fixed_payoffs += payoffs
+        self.total_payoff += payoffs[action]
+
+        self.iterations += 1
+
+class NoSwapPlayer(Player):
+    def __init__(self, n_actions, learning_rate):
+        self.n_actions = n_actions
+
+        self.strategy =  np.full(shape=n_actions, fill_value=1/n_actions)
+
+        self.algs = np.full(shape=n_actions, fill_value=None)
+
+        for i in range(n_actions):
+            self.algs[i] = NoRegretPlayer(n_actions, learning_rate)
+
+
+    def chooseAction(self):
+        return self.strategy
+
+    def update(self, action, payoffs):
+        recs = np.zeros(shape=(self.n_actions, self.n_actions))
+
+        for i in range(self.n_actions):
+            p = self.strategy[i] * payoffs
+            self.algs[i].update(action, p)
+
+            recs[i] = self.algs[i].strategy
+
+        w, vl = eig(recs, left=True, right=False)
+        idx = np.argmin(np.abs(w-1))
+        pi = abs(vl[:,idx].real)
+        pi = pi / pi.sum()
+
+        self.strategy = pi
 # For this class, we define the cost to be (1-payoff), where payoff is the payoff normalized between 0 and 1
 class MultiplicativeWeightsPlayer(Player):
     # minVal, maxVal are the maximum values that payoffs can take
