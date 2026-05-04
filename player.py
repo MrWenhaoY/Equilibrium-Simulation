@@ -96,8 +96,13 @@ class NoRegretPlayer(Player):
         regret = self.fixed_payoffs.max() - self.total_payoff
         return regret / self.time
 
-    def update(self, action, payoffs):
-        p = 1 - (payoffs - self.min_val) / (self.max_val - self.min_val)
+    def update(self, action, payoffs, normalize=True):
+        # only needed for SwapRegret functionality
+        if(normalize):
+            p = 1 - (payoffs - self.min_val) / (self.max_val - self.min_val)
+        else:
+            p = payoffs
+
         self.weights *= np.pow((1 - self.learning_rate), p)
 
         self.strategy = self.weights / self.weights.sum()
@@ -118,8 +123,14 @@ class NoRegretPlayer(Player):
 
 
 class NoSwapPlayer(Player):
-    def __init__(self, num_actions, learning_rate):
+    def __init__(self, num_actions, learning_rate, min_val=0, max_val=1):
         super().__init__(num_actions)
+
+        assert (0 < learning_rate <= 0.5), "learning_rate must be within (0, 0.5]"
+        assert (min_val <= max_val), "minVal cannot be greater than maxVal"
+
+        self.min_val = min_val
+        self.max_val = max_val
 
         self.learning_rate = learning_rate
 
@@ -128,7 +139,7 @@ class NoSwapPlayer(Player):
         self.algs = np.full(shape=num_actions, fill_value=None)
 
         for i in range(num_actions):
-            self.algs[i] = NoRegretPlayer(num_actions, learning_rate)
+            self.algs[i] = NoRegretPlayer(num_actions, learning_rate, min_val, max_val)
 
 
     def chooseAction(self):
@@ -138,8 +149,9 @@ class NoSwapPlayer(Player):
         recs = np.zeros(shape=(self.num_actions, self.num_actions))
 
         for i in range(self.num_actions):
-            p = self.strategy[i] * payoffs
-            self.algs[i].update(action, p)
+            payoffs_norm = 1 - (payoffs - self.min_val) / (self.max_val - self.min_val)
+            p = self.strategy[i] * payoffs_norm
+            self.algs[i].update(action, p, normalize=False)
 
             recs[i] = self.algs[i].strategy
 
@@ -156,4 +168,4 @@ class NoSwapPlayer(Player):
         self.algs = np.full(shape=self.num_actions, fill_value=None)
 
         for i in range(self.num_actions):
-            self.algs[i] = NoRegretPlayer(self.num_actions, self.learning_rate)
+            self.algs[i] = NoRegretPlayer(self.num_actions, self.learning_rate, self.min_val, self.max_val)
