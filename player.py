@@ -49,22 +49,26 @@ class BestResponsePlayer(Player):
         else:
             self.next_action[np.argmax(payoffs)] = 1 # This should be the first index of the maximum
 
+# For this class, we define the cost to be (1-payoff), where payoff is the payoff normalized between 0 and 1
 class NoRegretPlayer(Player):
-    def __init__(self, n_actions, learning_rate):
-        self.n_actions = n_actions
-
-        self.total_payoff = 0 
-        self.iterations = 0
+    def __init__(self, num_actions, learning_rate, min_val=0, max_val=1):
+        super().__init__(num_actions)
         
+        assert (0 < learning_rate <= 0.5), "learning_rate must be within (0, 0.5]"
+        assert (min_val <= max_val), "minVal cannot be greater than maxVal"
+
+        self.min_val = min_val
+        self.max_val = max_val
+
         # array of weights and resulting strategy
-        self.weights = np.ones(n_actions)
-        self.strategy = self.weights / n_actions
+        self.weights = np.ones(num_actions)
+        self.strategy = self.weights / num_actions
         
         # controls exploration vs exploitation
         self.learning_rate = learning_rate
 
         # array to keep track of fixed action payoffs
-        self.fixed_payoffs = np.zeros(n_actions)
+        self.fixed_payoffs = np.zeros(num_actions)
 
         # track total_payoff
         self.total_payoff = 0
@@ -74,10 +78,11 @@ class NoRegretPlayer(Player):
 
     def get_regret(self):
         regret = self.fixed_payoffs.max() - self.total_payoff
-        return regret / self.iterations
+        return regret / self.time
 
     def update(self, action, payoffs):
-        self.weights *= (1  - self.learning_rate) ** (-1 * payoffs)
+        p = 1 - (payoffs - self.min_val) / (self.max_val - self.min_val)
+        self.weights *= np.pow((1 - self.learning_rate), p)
 
         self.strategy = self.weights / self.weights.sum()
  
@@ -85,7 +90,7 @@ class NoRegretPlayer(Player):
         self.fixed_payoffs += payoffs
         self.total_payoff += payoffs[action]
 
-        self.iterations += 1
+        self.time += 1
 
 class NoSwapPlayer(Player):
     def __init__(self, n_actions, learning_rate):
@@ -117,23 +122,3 @@ class NoSwapPlayer(Player):
         pi = pi / pi.sum()
 
         self.strategy = pi
-# For this class, we define the cost to be (1-payoff), where payoff is the payoff normalized between 0 and 1
-class MultiplicativeWeightsPlayer(Player):
-    # minVal, maxVal are the maximum values that payoffs can take
-    def __init__(self, num_actions: int, epsilon: float, minVal=0, maxVal=1):
-        super().__init__(num_actions)
-        assert (0 < epsilon <= 0.5), "epsilon must be within (0, 0.5]"
-        assert (minVal <= maxVal), "minVal cannot be greater than maxVal"
-        self.epsilon = epsilon
-        self.weights = np.ones(num_actions) / num_actions # Normalized weights
-        self.minVal = minVal
-        self.maxVal = maxVal
-    def chooseAction(self) -> np.ndarray:
-        return self.weights
-    def update(self, action: int, payoffs: np.ndarray):
-        super().update(action, payoffs)
-        costs = 1 - (payoffs - self.minVal) / (self.maxVal - self.minVal)
-        self.weights *= np.pow((1 - self.epsilon), costs)
-        
-        # Normalize weights
-        self.weights /= np.sum(self.weights)
