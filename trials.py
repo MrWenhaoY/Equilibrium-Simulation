@@ -20,16 +20,13 @@ B = makeRandomPayoffMatrix(3)
 # print("Player 2 total payoff:", p2_totalPayoff)
 # print("Actions:", actions)
 
-n_games = 100
+n_games = 1
 n_iterations = 100
-n_actions = 2
+n_actions = 3
 
 strats1 = []
 all_outcomes1 = []
 for _ in range(n_games):
-    A = makeRandomPayoffMatrix(n_actions)
-    B = makeRandomPayoffMatrix(n_actions)
-
     # p1 = NoRegretPlayer(n_actions, 0.1)
     # p2 = NoRegretPlayer(n_actions, 0.1)
     
@@ -51,10 +48,10 @@ for _ in range(n_games):
                     [[-1,1], [1,-1], [0,0]]
                     ])
 
-    game = np.array([
-                    [[-1,-1], [-1, 0]],
-                    [[0, -1], [-5,-5]]
-                    ])
+    # game = np.array([
+    #                 [[-1,-1], [-1, 0]],
+    #                 [[0, -1], [-5,-5]]
+    #                 ])
 
     A = game[:,:,0]
     B = game[:,:,1]
@@ -76,4 +73,5 @@ for _ in range(n_games):
 
 print(np.sum(strats1, axis=0) / (n_games))
 print(np.sum(all_outcomes1, axis=0) / n_games)
+print(p1.strategy)
 

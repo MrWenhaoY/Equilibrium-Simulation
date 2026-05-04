@@ -111,13 +111,9 @@ class NoSwapPlayer(Player):
 
             recs[i] = self.algs[i].strategy
 
-        # w, vl = eig(recs, left=True, right=False)
-        w, vl = eig(recs.T)
+        w, vl = eig(recs, left=True, right=False)
         idx = np.argmin(np.abs(w-1))
-        pi = vl[:,idx].real
+        pi = abs(vl[:,idx].real)
         pi = pi / pi.sum()
 
         self.strategy = pi
-
-
-
