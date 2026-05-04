@@ -22,6 +22,12 @@ class Player:
         self.time += 1
         self.total_payoff += payoffs[action]
 
+    def reset(self):
+        # reset player 
+        self.total_payoff = 0 # Total utility gained
+        self.time = 0 # Number of time steps taken; number of actions taken
+
+
 class BestResponsePlayer(Player):
     # If random=False: Chooses best response with lowest index
     # If radnom=True: Uniform random over best responses
@@ -48,6 +54,16 @@ class BestResponsePlayer(Player):
             self.next_action /= np.sum(self.next_action)
         else:
             self.next_action[np.argmax(payoffs)] = 1 # This should be the first index of the maximum
+
+    def reset(self):
+        super().reset()
+
+        self.next_action = np.zeros(self.num_actions)
+        if self.random:
+            self.next_action += 1 / self.num_actions
+        else:
+            self.next_action[0] = 1
+
 
 # For this class, we define the cost to be (1-payoff), where payoff is the payoff normalized between 0 and 1
 class NoRegretPlayer(Player):
@@ -80,8 +96,13 @@ class NoRegretPlayer(Player):
         regret = self.fixed_payoffs.max() - self.total_payoff
         return regret / self.time
 
-    def update(self, action, payoffs):
-        p = 1 - (payoffs - self.min_val) / (self.max_val - self.min_val)
+    def update(self, action, payoffs, normalize=True):
+        # only needed for SwapRegret functionality
+        if(normalize):
+            p = 1 - (payoffs - self.min_val) / (self.max_val - self.min_val)
+        else:
+            p = payoffs
+
         self.weights *= np.pow((1 - self.learning_rate), p)
 
         self.strategy = self.weights / self.weights.sum()
@@ -92,27 +113,45 @@ class NoRegretPlayer(Player):
 
         self.time += 1
 
+    def reset(self):
+        super().reset()
+
+        self.weights = np.ones(self.num_actions)
+        self.strategy = self.weights / self.num_actions
+        
+        self.fixed_payoffs = np.zeros(self.num_actions)
+
+
 class NoSwapPlayer(Player):
-    def __init__(self, n_actions, learning_rate):
-        self.n_actions = n_actions
+    def __init__(self, num_actions, learning_rate, min_val=0, max_val=1):
+        super().__init__(num_actions)
 
-        self.strategy =  np.full(shape=n_actions, fill_value=1/n_actions)
+        assert (0 < learning_rate <= 0.5), "learning_rate must be within (0, 0.5]"
+        assert (min_val <= max_val), "minVal cannot be greater than maxVal"
 
-        self.algs = np.full(shape=n_actions, fill_value=None)
+        self.min_val = min_val
+        self.max_val = max_val
 
-        for i in range(n_actions):
-            self.algs[i] = NoRegretPlayer(n_actions, learning_rate)
+        self.learning_rate = learning_rate
+
+        self.strategy =  np.full(shape=num_actions, fill_value=1/num_actions)
+
+        self.algs = np.full(shape=num_actions, fill_value=None)
+
+        for i in range(num_actions):
+            self.algs[i] = NoRegretPlayer(num_actions, learning_rate, min_val, max_val)
 
 
     def chooseAction(self):
         return self.strategy
 
     def update(self, action, payoffs):
-        recs = np.zeros(shape=(self.n_actions, self.n_actions))
+        recs = np.zeros(shape=(self.num_actions, self.num_actions))
 
-        for i in range(self.n_actions):
-            p = self.strategy[i] * payoffs
-            self.algs[i].update(action, p)
+        for i in range(self.num_actions):
+            payoffs_norm = 1 - (payoffs - self.min_val) / (self.max_val - self.min_val)
+            p = self.strategy[i] * payoffs_norm
+            self.algs[i].update(action, p, normalize=False)
 
             recs[i] = self.algs[i].strategy
 
@@ -122,3 +161,11 @@ class NoSwapPlayer(Player):
         pi = pi / pi.sum()
 
         self.strategy = pi
+
+    def reset(self):
+        self.strategy =  np.full(shape=self.num_actions, fill_value=1/self.num_actions)
+
+        self.algs = np.full(shape=self.num_actions, fill_value=None)
+
+        for i in range(self.num_actions):
+            self.algs[i] = NoRegretPlayer(self.num_actions, self.learning_rate, self.min_val, self.max_val)

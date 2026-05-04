@@ -48,3 +48,56 @@ def run_once(p1, p2, payoffs1, payoffs2):
     p1.update(a1, payoffs1[:,a2])
     p2.update(a2, payoffs2[a1])
 
+def run(p1: Player, p2: Player, n_iterations, n_games=1, num_actions=2, **kwargs):
+    # can specify game to play by providing payoff matrices for each player
+    # note: this will ignore num_actions
+    payoffs1: np.ndarray = kwargs.get('payoffs1', None)
+    payoffs2: np.ndarray = kwargs.get('payoffs2', None)
+        
+    # if not specified, use random games
+    random_games = payoffs1 is None or payoffs2 is None
+
+    # use num_actions from specified game
+    if not random_games:
+        num1, num2 = payoffs1.shape
+        assert num1 == num2, f'Both players should have the same number of actions (p1: {num1}, p2: {num2})'
+
+        num_actions = num1
+    
+    # arrays to track all converged distributions (useful for single games)
+    outcomes_all = []
+    s1_all = []
+    s2_all = []
+
+    # run trials
+    for _ in range(n_games):
+        if random_games:
+            payoffs1 = makeRandomPayoffMatrix(num_actions)
+            payoffs2 = makeRandomPayoffMatrix(num_actions)
+
+        # array to track distribution of outcomes at each time step
+        outcomes = []
+
+        # arrays to track strategies of each player at each time step
+        s1 = []
+        s2 = []
+
+        # TODO: can also track payoffs (will be useful for tournaments)
+       
+        for t in range(n_iterations):
+            run_once(p1, p2, payoffs1, payoffs2)
+
+            outcomes.append(np.outer(p1.chooseAction(), p2.chooseAction()))
+            s1.append(p1.chooseAction())
+            s2.append(p2.chooseAction())
+        
+        # keep track of all time averaged distributions (only really useful if specified game)
+        outcomes_all.append(np.sum(outcomes, axis=0) / n_iterations)
+        s1_all.append(np.sum(s1, axis=0) / n_iterations)
+        s2_all.append(np.sum(s1, axis=0) / n_iterations)
+        
+        # reinitialise players for new game
+        p1.reset()
+        p2.reset()
+    
+    return outcomes_all, s1_all, s2_all
