@@ -55,7 +55,7 @@ def run(p1: Player, p2: Player, n_iterations, n_games=1, num_actions=2, **kwargs
     payoffs2: np.ndarray = kwargs.get('payoffs2', None)
         
     # if not specified, use random games
-    random_games = not payoffs1 or not payoffs2
+    random_games = payoffs1 is None or payoffs2 is None
 
     # use num_actions from specified game
     if not random_games:
