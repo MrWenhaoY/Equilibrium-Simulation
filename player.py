@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import eig
 
 class Player:
     def __init__(self, num_actions: int):
@@ -65,3 +66,35 @@ class MultiplicativeWeightsPlayer(Player):
         
         # Normalize weights
         self.weights /= np.sum(self.weights)
+
+class NoSwapPlayer(Player):
+    def __init__(self, n_actions, learning_rate, minVal=0, maxVal=1):
+        self.n_actions = n_actions
+
+        self.weights =  np.full(shape=n_actions, fill_value=1/n_actions)
+
+        self.algs = np.full(shape=n_actions, fill_value=None)
+
+        for i in range(n_actions):
+            self.algs[i] = MultiplicativeWeightsPlayer(n_actions, learning_rate, minVal, maxVal)
+
+
+    def chooseAction(self):
+        return self.weights
+
+    def update(self, action, payoffs):
+        recs = np.zeros(shape=(self.n_actions, self.n_actions))
+
+        for i in range(self.n_actions):
+            p = self.weights[i] * payoffs
+            self.algs[i].update(action, p)
+
+            recs[i] = self.algs[i].weights
+
+        # w, vl = eig(recs, left=True, right=False)
+        w, vl = eig(recs.T)
+        idx = np.argmin(np.abs(w-1))
+        pi = vl[:,idx].real
+        pi = pi / pi.sum()
+
+        self.weights = pi
